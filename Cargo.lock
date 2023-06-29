@@ -33,7 +33,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "plugin-erc20"
+name = "plugin-starknetid"
 version = "0.1.0"
 dependencies = [
  "nanos_sdk",
