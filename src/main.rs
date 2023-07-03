@@ -6,12 +6,12 @@ use core::slice::Iter;
 use nanos_sdk::bindings::os_lib_end;
 nanos_sdk::set_panic!(nanos_sdk::exiting_panic);
 use nanos_sdk::plugin::{
-    PluginFeedParams, PluginFinalizeParams, PluginGetUiParams, PluginInitParams,
+    PluginFeedParams, PluginGetUiParams, PluginInitParams,
     PluginInteractionType, PluginQueryUiParams, PluginResult,
 };
 use nanos_sdk::string::String;
 use nanos_sdk::{string, testing};
-use starknet_sdk::types::{AbstractCall, AbstractCallData, FieldElement};
+use starknet_sdk::types::{AbstractCall, AbstractCallData, FieldElement, UiParam};
 
 struct Selector {
     name: &'static str,
@@ -95,8 +95,16 @@ extern "C" fn sample_main(arg0: u32) {
         }
         PluginInteractionType::Finalize => {
             testing::debug_print("Finalize plugin\n");
-            let value2 = unsafe { *args.add(1) as *mut PluginFinalizeParams };
-            let params: &mut PluginFinalizeParams = unsafe { &mut *value2 };
+            let value2 = unsafe { *args.add(1) as *mut PluginFeedParams };
+
+            let params: &mut PluginFeedParams = unsafe { &mut *value2 };
+            let core_params = params.core_params.as_mut().unwrap();
+
+            let starknetid_ctx = get_context(core_params.plugin_internal_ctx);
+
+            let data_out = unsafe { &mut *(params.data_out as *mut UiParam) };
+            data_out.msg = starknetid_ctx.domain;
+
             params.result = PluginResult::Ok;
         }
         PluginInteractionType::QueryUi => {
