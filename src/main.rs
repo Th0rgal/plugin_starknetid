@@ -5,10 +5,7 @@ use core::slice::Iter;
 
 use nanos_sdk::bindings::os_lib_end;
 nanos_sdk::set_panic!(nanos_sdk::exiting_panic);
-use nanos_sdk::plugin::{
-    PluginFeedParams, PluginGetUiParams, PluginInitParams,
-    PluginInteractionType, PluginQueryUiParams, PluginResult,
-};
+use nanos_sdk::plugin::{PluginInteractionType, PluginParam, PluginResult};
 use nanos_sdk::string::String;
 use nanos_sdk::{string, testing};
 use starknet_sdk::types::{AbstractCall, AbstractCallData, FieldElement, UiParam};
@@ -36,12 +33,15 @@ extern "C" fn sample_main(arg0: u32) {
             testing::debug_print("Check plugin presence\n");
         }
         PluginInteractionType::Init => {
-            testing::debug_print("Init plugin context\n");
+            testing::debug_print("starknet-id: Init plugin context\n");
 
-            let value2 = unsafe { *args.add(1) as *mut PluginInitParams };
+            let value2 = unsafe { *args.add(1) as *mut PluginParam };
 
-            let params: &mut PluginInitParams = unsafe { &mut *value2 };
-            let core_params = params.core_params.as_mut().unwrap();
+            let params: &mut PluginParam = unsafe { &mut *value2 };
+            let starknetid_ctx =
+                get_context(params.plugin_internal_ctx, params.plugin_internal_ctx_len)
+                    .expect("error when getting ctx");
+
             let call: &AbstractCall = unsafe { &*(params.data_in as *const AbstractCall) };
 
             if call.selector.value
@@ -60,12 +60,12 @@ extern "C" fn sample_main(arg0: u32) {
         PluginInteractionType::Feed => {
             testing::debug_print("Feed plugin\n");
 
-            let value2 = unsafe { *args.add(1) as *mut PluginFeedParams };
+            let value2 = unsafe { *args.add(1) as *mut PluginParam };
 
-            let params: &mut PluginFeedParams = unsafe { &mut *value2 };
-            let core_params = params.core_params.as_mut().unwrap();
-
-            let starknetid_ctx = get_context(core_params.plugin_internal_ctx);
+            let params: &mut PluginParam = unsafe { &mut *value2 };
+            let starknetid_ctx =
+                get_context(params.plugin_internal_ctx, params.plugin_internal_ctx_len)
+                    .expect("error when getting ctx");
 
             let data_in = unsafe {
                 &*(params.data_in as *const (&[AbstractCallData; 8], &[string::String<32>; 16]))
@@ -76,115 +76,67 @@ extern "C" fn sample_main(arg0: u32) {
             let domain_length = match calldata[0] {
                 AbstractCallData::Felt(v) => v,
                 _ => {
+                    testing::debug_print("surprise\n");
                     params.result = PluginResult::Err;
                     return;
                 }
             };
+            
+            let m: u32 = usize::from(domain_length) as u32;
+            let dec_repr = testing::to_dec(m);
+            let dec_repr_str = core::str::from_utf8(&dec_repr).unwrap();
+            testing::debug_print("VALUE:");
+            testing::debug_print(String::<64>::from(domain_length.value).as_str());
+            testing::debug_print("\n");
 
-            let calldata_slice = &calldata[1..(usize::from(domain_length))];
+            //let calldata_slice = &calldata[1..(usize::from(domain_length))];
 
-            match domain_as_str(calldata_slice.iter()) {
-                Ok(domain_string) => {
-                    starknetid_ctx.domain = domain_string;
-                    params.result = PluginResult::Ok;
-                }
-                Err(_) => {
-                    params.result = PluginResult::Err;
-                }
-            }
+            // match domain_as_str(calldata_slice.iter()) {
+            //     Ok(domain_string) => {
+            //         starknetid_ctx.domain = domain_string;
+            //         params.result = PluginResult::Ok;
+            //     }
+            //     Err(_) => {
+            //         params.result = PluginResult::Err;
+            //     }
+            // }
         }
         PluginInteractionType::Finalize => {
             testing::debug_print("Finalize plugin\n");
-            let value2 = unsafe { *args.add(1) as *mut PluginFeedParams };
+            let value2 = unsafe { *args.add(1) as *mut PluginParam };
 
-            let params: &mut PluginFeedParams = unsafe { &mut *value2 };
-            let core_params = params.core_params.as_mut().unwrap();
+            let params: &mut PluginParam = unsafe { &mut *value2 };
+            let starknetid_ctx =
+                get_context(params.plugin_internal_ctx, params.plugin_internal_ctx_len)
+                    .expect("error when getting ctx");
 
-            let starknetid_ctx = get_context(core_params.plugin_internal_ctx);
-
-            let data_out = unsafe { &mut *(params.data_out as *mut UiParam) };
+            let data_out: &mut UiParam = unsafe { &mut *(params.data_out as *mut UiParam) };
             data_out.msg = starknetid_ctx.domain;
-
             params.result = PluginResult::Ok;
         }
         PluginInteractionType::QueryUi => {
             testing::debug_print("QueryUI plugin\n");
-            let value2 = unsafe { *args.add(1) as *mut PluginQueryUiParams };
-            let params: &mut PluginQueryUiParams = unsafe { &mut *value2 };
-            // let _core_params = params.core_params.as_mut().unwrap();
 
-            // let title = "ERC-20 OPERATION".as_bytes();
-            // params.title.arr[..title.len()].copy_from_slice(title);
-            // params.title.len = title.len();
+            let value2 = unsafe { *args.add(1) as *mut PluginParam };
+
+            let params: &mut PluginParam = unsafe { &mut *value2 };
+            let out_title = unsafe { &mut *(params.data_out as *mut string::String<32>) };
+
+            let title = "ERC-20 OPERATION".as_bytes();
+            out_title.arr[..title.len()].copy_from_slice(title);
+            out_title.len = title.len();
 
             params.result = PluginResult::Ok;
         }
         PluginInteractionType::GetUi => {
             testing::debug_print("GetUI plugin\n");
 
-            let value2 = unsafe { *args.add(1) as *mut PluginGetUiParams };
+            let value2 = unsafe { *args.add(1) as *mut PluginParam };
 
-            let params: &mut PluginGetUiParams = unsafe { &mut *value2 };
-            // let core_params = params.core_params.as_mut().unwrap();
-
-            // let erc20_ctx = get_context(core_params.plugin_internal_ctx);
-
-            // testing::debug_print("requested screen index: ");
-            // let s: string::String<2> = (params.ui_screen_idx as u8).into();
-            // testing::debug_print(s.as_str());
-            // testing::debug_print("\n");
-
-            // let idx = erc20_ctx.token_info_idx.expect("unknown token");
-            // let token = tokens[idx];
-
-            // match params.ui_screen_idx {
-            //     0 => {
-            //         let title = "TOKEN:".as_bytes();
-            //         params.title.arr[..title.len()].copy_from_slice(title);
-            //         params.title.len = title.len();
-
-            //         let msg = token.name.as_bytes();
-            //         params.msg.arr[..msg.len()].copy_from_slice(msg);
-            //         params.msg.len = msg.len();
-
-            //         params.result = PluginResult::Ok;
-            //     }
-            //     1 => {
-            //         let title = "METHOD:".as_bytes();
-            //         params.title.arr[..title.len()].copy_from_slice(title);
-            //         params.title.len = title.len();
-
-            //         let msg = erc20_ctx.method.as_bytes();
-            //         params.msg.arr[..msg.len()].copy_from_slice(msg);
-            //         params.msg.len = msg.len();
-
-            //         params.result = PluginResult::Ok;
-            //     }
-            //     2 => {
-            //         let title = "TO:".as_bytes();
-            //         params.title.arr[..title.len()].copy_from_slice(title);
-            //         params.title.len = title.len();
-            //         params.msg.arr[..erc20_ctx.destination.len]
-            //             .copy_from_slice(&erc20_ctx.destination.arr[..erc20_ctx.destination.len]);
-            //         params.msg.len = erc20_ctx.destination.len;
-
-            //         params.result = PluginResult::Ok;
-            //     }
-            //     3 => {
-            //         let title = "AMOUNT:".as_bytes();
-            //         params.title.arr[..title.len()].copy_from_slice(title);
-            //         params.title.len = title.len();
-
-            //         let s = string::uint256_to_float(&erc20_ctx.amount, token.decimals);
-            //         params.msg.arr[..s.len].copy_from_slice(&s.arr[..s.len]);
-            //         params.msg.len = s.len;
-
-            //         params.result = PluginResult::Ok;
-            //     }
-            //     _ => {
-            //         params.result = PluginResult::Err;
-            //     }
-            // }
+            let params: &mut PluginParam = unsafe { &mut *value2 };
+            let starknetid_ctx =
+                get_context(params.plugin_internal_ctx, params.plugin_internal_ctx_len)
+                    .expect("error when getting ctx");
             params.result = PluginResult::Ok;
         }
         _ => {
@@ -270,11 +222,18 @@ fn append_decoded(mut felt: FieldElement, output: &mut String<64>) -> Result<(),
     return Ok(());
 }
 
-fn get_context(buf: *mut u8) -> &'static mut StarknetIDCtx {
-    let addr = buf as usize;
-    let alignment = core::mem::align_of::<StarknetIDCtx>();
-    let offset: isize = (alignment - (addr % alignment)) as isize;
-    let erc20_ctx: &mut StarknetIDCtx = unsafe { &mut *(buf.offset(offset) as *mut StarknetIDCtx) };
+fn get_context(buf: *mut u8, buf_len: usize) -> Option<&'static mut StarknetIDCtx> {
+    let ctx_size = core::mem::size_of::<StarknetIDCtx>();
+    let ctx_alignment = core::mem::align_of::<StarknetIDCtx>();
+    let buf_addr = buf as usize;
+    let offset: isize = (ctx_alignment - (buf_addr % ctx_alignment)) as isize;
 
-    erc20_ctx
+    if (buf_len - offset as usize) < ctx_size {
+        testing::debug_print("buffer ctx too small!!\n");
+        return None;
+    }
+
+    let ctx: &mut StarknetIDCtx = unsafe { &mut *(buf.offset(offset) as *mut StarknetIDCtx) };
+
+    Some(ctx)
 }
