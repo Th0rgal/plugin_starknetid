@@ -81,12 +81,20 @@ extern "C" fn sample_main(arg0: u32) {
                     return;
                 }
             };
-            
-            let m: u32 = usize::from(domain_length) as u32;
-            let dec_repr = testing::to_dec(m);
-            let dec_repr_str = core::str::from_utf8(&dec_repr).unwrap();
             testing::debug_print("VALUE:");
             testing::debug_print(String::<64>::from(domain_length.value).as_str());
+            testing::debug_print("\n");
+
+            let domain = match calldata[1] {
+                AbstractCallData::Felt(v) => v,
+                _ => {
+                    testing::debug_print("test domain\n");
+                    params.result = PluginResult::Err;
+                    return;
+                }
+            };
+            testing::debug_print("VALUE2:");
+            testing::debug_print(String::<64>::from(domain.value).as_str());
             testing::debug_print("\n");
 
             //let calldata_slice = &calldata[1..(usize::from(domain_length))];
