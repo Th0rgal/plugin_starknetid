@@ -81,33 +81,30 @@ extern "C" fn sample_main(arg0: u32) {
                     return;
                 }
             };
-            testing::debug_print("VALUE:");
-            testing::debug_print(String::<64>::from(domain_length.value).as_str());
-            testing::debug_print("\n");
 
             let domain = match calldata[1] {
                 AbstractCallData::Felt(v) => v,
                 _ => {
-                    testing::debug_print("test domain\n");
                     params.result = PluginResult::Err;
                     return;
                 }
             };
-            testing::debug_print("VALUE2:");
-            testing::debug_print(String::<64>::from(domain.value).as_str());
-            testing::debug_print("\n");
 
-            //let calldata_slice = &calldata[1..(usize::from(domain_length))];
+            let calldata_slice = &calldata[1..(usize::from(domain_length) + 1)];
 
-            // match domain_as_str(calldata_slice.iter()) {
-            //     Ok(domain_string) => {
-            //         starknetid_ctx.domain = domain_string;
-            //         params.result = PluginResult::Ok;
-            //     }
-            //     Err(_) => {
-            //         params.result = PluginResult::Err;
-            //     }
-            // }
+            match domain_as_str(calldata_slice.iter()) {
+                Ok(domain_string) => {
+                    starknetid_ctx.domain = domain_string;
+                    testing::debug_print("READ DOMAIN: ");
+                    testing::debug_print(domain_string.as_str());
+                    testing::debug_print("\n");
+                    params.result = PluginResult::Ok;
+                }
+                Err(_) => {
+                    testing::debug_print("ERROR: UNABLE TO READ DOMAIN\n");
+                    params.result = PluginResult::Err;
+                }
+            }
         }
         PluginInteractionType::Finalize => {
             testing::debug_print("Finalize plugin\n");
@@ -119,7 +116,7 @@ extern "C" fn sample_main(arg0: u32) {
                     .expect("error when getting ctx");
 
             let data_out: &mut UiParam = unsafe { &mut *(params.data_out as *mut UiParam) };
-            data_out.msg = starknetid_ctx.domain;
+            data_out.msg.copy_from(&starknetid_ctx.domain);
             params.result = PluginResult::Ok;
         }
         PluginInteractionType::QueryUi => {
