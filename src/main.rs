@@ -216,11 +216,17 @@ fn append_decoded(mut felt: FieldElement, output: &mut String<64>) -> Result<(),
         }
         let (q, r) = (&felt).div_rem(&DEFAULT_DIVIDER);
         felt = q;
-        if r == ESCAPE {
-            return Err(DecodeError::UnsupportedAlphabet);
-        }
 
-        let byte: u8 = r.into();
+        let byte: u8 = if r == ESCAPE {
+            if q == FieldElement::ZERO {
+                b'a'
+            } else {
+                return Err(DecodeError::UnsupportedAlphabet);
+            }
+        } else {
+            r.into()
+        };
+
         output.arr[output.len] = byte + if r < LETTERS_LEN { 97u8 } else { 22u8 };
         output.len += 1;
     }
