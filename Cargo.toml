@@ -9,6 +9,7 @@ authors = ["yogh333"]
 [dependencies]
 nanos_sdk = { git = "https://github.com/LedgerHQ/ledger-nanos-sdk.git", branch="feat/libcall_support" }
 nanos_ui = { git = "https://github.com/LedgerHQ/ledger-nanos-ui.git", branch="feat/use_fork_nanos_sdk" }
+starknet_sdk = {git = "https://github.com/LedgerHQ/starknet-sdk.git"}
 
 
 [features]
