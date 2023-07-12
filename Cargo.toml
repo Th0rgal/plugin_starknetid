@@ -7,8 +7,8 @@ authors = ["yogh333"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-nanos_sdk = { git = "https://github.com/LedgerHQ/ledger-nanos-sdk.git", branch="feat/libcall_support" }
-nanos_ui = { git = "https://github.com/LedgerHQ/ledger-nanos-ui.git", branch="feat/use_fork_nanos_sdk" }
+nanos_sdk = { git = "https://github.com/yogh333/ledger-nanos-sdk.git", branch="feat/libcall_support" }
+nanos_ui = { git = "https://github.com/yogh333/ledger-nanos-ui.git", branch="feat/use_fork_nanos_sdk" }
 starknet_sdk = {git = "https://github.com/LedgerHQ/starknet-sdk.git"}
 
 
